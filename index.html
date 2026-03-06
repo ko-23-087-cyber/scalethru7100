@@ -1,274 +1,181 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>DM Chat</title>
-
-<style>
-
-body{
-font-family: Arial;
-background:#f4f7f6;
-display:flex;
-flex-direction:column;
-align-items:center;
-padding:20px;
-}
-
-.container{
-width:100%;
-max-width:500px;
-background:white;
-padding:20px;
-border-radius:12px;
-box-shadow:0 4px 15px rgba(0,0,0,0.1);
-margin-bottom:15px;
-}
-
-.auth-bar{
-display:flex;
-align-items:center;
-gap:10px;
-}
-
-.user-avatar{
-width:40px;
-height:40px;
-border-radius:50%;
-}
-
-.chat-box{
-height:300px;
-overflow-y:auto;
-border:1px solid #ddd;
-border-radius:8px;
-padding:10px;
-margin-bottom:10px;
-}
-
-.message{
-padding:8px 12px;
-border-radius:10px;
-margin:5px 0;
-max-width:70%;
-}
-
-.my{
-background:#007bff;
-color:white;
-margin-left:auto;
-}
-
-.other{
-background:#eee;
-}
-
-input,select{
-width:100%;
-padding:10px;
-margin:6px 0;
-border:1px solid #ddd;
-border-radius:6px;
-}
-
-button{
-background:#007bff;
-color:white;
-border:none;
-padding:10px;
-border-radius:6px;
-cursor:pointer;
-}
-
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DM Chat</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f4f7f6; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); margin-bottom: 15px; }
+        .auth-bar { display: flex; align-items: center; gap: 10px; justify-content: space-between; }
+        .user-info-side { display: flex; align-items: center; gap: 10px; }
+        .user-avatar { width: 40px; height: 40px; border-radius: 50%; }
+        .chat-box { height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 10px; margin-bottom: 10px; background: #fafafa; }
+        .message { padding: 8px 12px; border-radius: 10px; margin: 5px 0; max-width: 75%; word-wrap: break-word; }
+        .my { background: #007bff; color: white; margin-left: auto; }
+        .other { background: #eee; color: #333; }
+        input, select { width: 100%; padding: 10px; margin: 6px 0; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+        button:hover { background: #0056b3; }
+        #logoutBtn { background: #ff4d4d; }
+    </style>
 </head>
-
 <body>
 
 <div class="container">
-
-<button id="loginBtn">Войти через Google</button>
-
-<div id="userInfo" class="auth-bar" style="display:none">
-<img id="userPhoto" class="user-avatar">
-<b id="userName"></b>
-<button id="logoutBtn">Выйти</button>
-</div>
-
+    <button id="loginBtn">Войти через Google</button>
+    <div id="userInfo" class="auth-bar" style="display:none">
+        <div class="user-info-side">
+            <img id="userPhoto" class="user-avatar">
+            <b id="userName"></b>
+        </div>
+        <button id="logoutBtn">Выйти</button>
+    </div>
 </div>
 
 <div class="container" id="chatSection" style="display:none">
-
-<h3>Личные сообщения</h3>
-
-<select id="userSelect"></select>
-
-<div id="chatBox" class="chat-box"></div>
-
-<input id="messageInput" placeholder="Введите сообщение">
-
-<button id="sendBtn">Отправить</button>
-
+    <h3>Личные сообщения</h3>
+    <label for="userSelect">Собеседник:</label>
+    <select id="userSelect">
+        <option value="">-- Выберите пользователя --</option>
+    </select>
+    <div id="chatBox" class="chat-box"></div>
+    <input id="messageInput" placeholder="Введите сообщение...">
+    <button id="sendBtn" style="width: 100%; margin-top: 5px;">Отправить</button>
 </div>
 
 <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, setDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js";
-import { getFirestore, collection, addDoc, setDoc, doc, query, orderBy, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
-import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js";
+    const firebaseConfig = {
+        apiKey: "AIzaSyBLl4fDVXWvUYAma1W1C3otUmcVrb1dAKg",
+        authDomain: "zaykajudyhops.firebaseapp.com",
+        projectId: "zaykajudyhops",
+        storageBucket: "zaykajudyhops.firebasestorage.app",
+        messagingSenderId: "300973569668",
+        appId: "1:300973569668:web:ebf10bef0fadccca0d34d1"
+    };
 
-const firebaseConfig = {
-apiKey: "AIzaSyBLl4fDVXWvUYAma1W1C3otUmcVrb1dAKg",
-authDomain: "zaykajudyhops.firebaseapp.com",
-projectId: "zaykajudyhops",
-storageBucket: "zaykajudyhops.firebasestorage.app",
-messagingSenderId: "300973569668",
-appId: "1:300973569668:web:ebf10bef0fadccca0d34d1"
-};
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
+    const provider = new GoogleAuthProvider();
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
+    const loginBtn = document.getElementById("loginBtn");
+    const logoutBtn = document.getElementById("logoutBtn");
+    const userName = document.getElementById("userName");
+    const userPhoto = document.getElementById("userPhoto");
+    const userInfo = document.getElementById("userInfo");
+    const chatSection = document.getElementById("chatSection");
+    const chatBox = document.getElementById("chatBox");
+    const userSelect = document.getElementById("userSelect");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
 
-const loginBtn = document.getElementById("loginBtn");
-const logoutBtn = document.getElementById("logoutBtn");
-const userName = document.getElementById("userName");
-const userPhoto = document.getElementById("userPhoto");
-const userInfo = document.getElementById("userInfo");
+    let unsubscribeMessages = null;
 
-const chatSection = document.getElementById("chatSection");
-const chatBox = document.getElementById("chatBox");
-const userSelect = document.getElementById("userSelect");
-const messageInput = document.getElementById("messageInput");
-const sendBtn = document.getElementById("sendBtn");
+    loginBtn.onclick = () => signInWithPopup(auth, provider);
+    logoutBtn.onclick = () => signOut(auth);
 
-let currentChatUser = null;
+    onAuthStateChanged(auth, async (user) => {
+        if(user){
+            loginBtn.style.display="none";
+            userInfo.style.display="flex";
+            chatSection.style.display="block";
+            userName.innerText = user.displayName;
+            userPhoto.src = user.photoURL;
 
-loginBtn.onclick = () => signInWithPopup(auth, provider);
-logoutBtn.onclick = () => signOut(auth);
+            await setDoc(doc(db,"users",user.uid),{
+                uid:user.uid,
+                name:user.displayName,
+                photo:user.photoURL
+            }, { merge: true });
 
-onAuthStateChanged(auth, async (user) => {
+            loadUsers();
+        } else {
+            loginBtn.style.display="block";
+            userInfo.style.display="none";
+            chatSection.style.display="none";
+            if(unsubscribeMessages) unsubscribeMessages();
+        }
+    });
 
-if(user){
+    function loadUsers(){
+        onSnapshot(collection(db,"users"),(snapshot)=>{
+            const currentSelection = userSelect.value;
+            userSelect.innerHTML='<option value="">-- Выберите пользователя --</option>';
+            
+            snapshot.forEach((docItem)=>{
+                const u = docItem.data();
+                if(u.uid !== auth.currentUser.uid){
+                    const option = document.createElement("option");
+                    option.value = u.uid;
+                    option.text = u.name;
+                    if(u.uid === currentSelection) option.selected = true;
+                    userSelect.appendChild(option);
+                }
+            });
+        });
+    }
 
-loginBtn.style.display="none";
-userInfo.style.display="flex";
-chatSection.style.display="block";
+    // Следим за изменением выбора
+    userSelect.onchange = () => {
+        loadMessages(userSelect.value);
+    };
 
-userName.innerText = user.displayName;
-userPhoto.src = user.photoURL;
+    function loadMessages(targetUid){
+        // Очищаем старую подписку, если она была
+        if(unsubscribeMessages) unsubscribeMessages();
+        chatBox.innerHTML = "";
+        
+        if(!targetUid) return;
 
-await setDoc(doc(db,"users",user.uid),{
-uid:user.uid,
-name:user.displayName,
-photo:user.photoURL
-});
+        const q = query(collection(db,"messages"), orderBy("timestamp"));
 
-loadUsers();
+        unsubscribeMessages = onSnapshot(q, (snapshot) => {
+            chatBox.innerHTML = "";
+            snapshot.forEach((docItem) => {
+                const m = docItem.data();
+                // Фильтр сообщений только между мной и выбранным юзером
+                if(
+                    (m.sender === auth.currentUser.uid && m.receiver === targetUid) ||
+                    (m.sender === targetUid && m.receiver === auth.currentUser.uid)
+                ){
+                    const div = document.createElement("div");
+                    div.classList.add("message");
+                    div.classList.add(m.sender === auth.currentUser.uid ? "my" : "other");
+                    div.innerText = m.text;
+                    chatBox.appendChild(div);
+                }
+            });
+            chatBox.scrollTop = chatBox.scrollHeight;
+        });
+    }
 
-}else{
+    sendBtn.onclick = async () => {
+        const targetUid = userSelect.value;
+        const text = messageInput.value.trim();
 
-loginBtn.style.display="block";
-userInfo.style.display="none";
-chatSection.style.display="none";
+        if(!targetUid) {
+            alert("Пожалуйста, сначала выберите, кому писать!");
+            return;
+        }
+        if(!text) return;
 
-}
-
-});
-
-function loadUsers(){
-
-onSnapshot(collection(db,"users"),(snapshot)=>{
-
-userSelect.innerHTML="";
-
-snapshot.forEach((docItem)=>{
-
-const u = docItem.data();
-
-if(u.uid !== auth.currentUser.uid){
-
-const option=document.createElement("option");
-option.value=u.uid;
-option.text=u.name;
-
-userSelect.appendChild(option);
-
-}
-
-});
-
-});
-
-}
-
-userSelect.onchange = () => {
-
-currentChatUser = userSelect.value;
-loadMessages();
-
-};
-
-function loadMessages(){
-
-const q = query(collection(db,"messages"),orderBy("timestamp"));
-
-onSnapshot(q,(snapshot)=>{
-
-chatBox.innerHTML="";
-
-snapshot.forEach((docItem)=>{
-
-const m = docItem.data();
-
-if(
-(m.sender === auth.currentUser.uid && m.receiver === currentChatUser) ||
-(m.sender === currentChatUser && m.receiver === auth.currentUser.uid)
-){
-
-const div=document.createElement("div");
-
-div.classList.add("message");
-
-if(m.sender === auth.currentUser.uid){
-div.classList.add("my");
-}else{
-div.classList.add("other");
-}
-
-div.innerText = m.text;
-
-chatBox.appendChild(div);
-
-}
-
-});
-
-});
-
-}
-
-sendBtn.onclick = async () => {
-
-if(!currentChatUser) return alert("Выберите пользователя");
-
-const text = messageInput.value;
-
-if(!text) return;
-
-await addDoc(collection(db,"messages"),{
-text:text,
-sender:auth.currentUser.uid,
-receiver:currentChatUser,
-timestamp:serverTimestamp()
-});
-
-messageInput.value="";
-
-};
-
+        try {
+            await addDoc(collection(db, "messages"), {
+                text: text,
+                sender: auth.currentUser.uid,
+                receiver: targetUid,
+                timestamp: serverTimestamp()
+            });
+            messageInput.value = "";
+        } catch (e) {
+            console.error("Ошибка при отправке:", e);
+        }
+    };
 </script>
 
 </body>
