@@ -3,32 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Status Monitor</title>
+    <title>Status Monitor - Maxim</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); width: 100%; max-width: 450px; padding: 20px; margin-bottom: 20px; }
-        h2 { margin-top: 0; font-size: 1.2rem; }
-        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; }
-        button { border: none; border-radius: 8px; padding: 12px; color: white; cursor: pointer; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; transition: opacity 0.2s; }
-        button:hover { opacity: 0.9; }
-        
-        /* Цвета кнопок */
+        body { font-family: -apple-system, system-ui, sans-serif; background-color: #f0f2f5; display: flex; flex-direction: column; align-items: center; padding: 20px; color: #1c1e21; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.08); width: 100%; max-width: 400px; padding: 24px; margin-bottom: 20px; }
+        h2 { margin: 0 0 10px 0; font-size: 1.25rem; font-weight: 700; }
+        .user-info { color: #65676b; margin-bottom: 20px; }
+        .user-info span { color: #000; font-weight: 600; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        button { border: none; border-radius: 8px; padding: 12px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; transition: transform 0.1s, opacity 0.2s; }
+        button:active { transform: scale(0.98); }
         .btn-study { background-color: #2ea44f; }
         .btn-coffee { background-color: #ffc107; color: #000; }
         .btn-game { background-color: #17a2b8; }
         .btn-home { background-color: #6c757d; }
-
-        .user-item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 0; border-bottom: 1px solid #eee; }
-        .user-item:last-child { border-bottom: none; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
-        small { color: #666; }
+        .monitor-title { border-bottom: 1px solid #ebedf0; padding-bottom: 12px; margin-bottom: 15px; }
+        .user-item { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; }
     </style>
 </head>
 <body>
 
     <div class="card">
         <h2>Мой профиль</h2>
-        <div id="myInfo">Загрузка...</div>
+        <div class="user-info">Вы зашли как: <span id="myName">Maxim</span></div>
         
         <div class="btn-grid">
             <button class="btn-study" onclick="changeStatus('Учусь', '#2ea44f')">📚 Учусь</button>
@@ -39,19 +37,19 @@
     </div>
 
     <div class="card">
-        <h2>Монитор группы</h2>
-        <div id="groupList">Загрузка списка...</div>
+        <h2 class="monitor-title">Монитор группы</h2>
+        <div id="groupList">Загрузка данных...</div>
     </div>
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
 
+        // ПРОВЕРЬ ЭТИ ДАННЫЕ (возьми в Settings -> API в Supabase)
         const URL = 'https://rncerhgizyjhovbdpqnl.supabase.co';
-        const KEY = 'sb_publishable_ThtftS6uBeaKf8FyndIFTg_O0HMJ5yh'; // Твой ключ из скрина
+        const KEY = 'sb_publishable_ThtftS6uBeaKf8FyndIFTg_O0HMJ5yh'; 
         const supabase = createClient(URL, KEY);
 
-        // ID из твоего кода на скрине
-        const MY_ID = '4bc5694e-89f8-47d9-9b60-2d3bd2439122';
+        const MY_ID = '193dd1ef-98ad-496e-bf68-f7e1b6eac978';
 
         window.changeStatus = async (text, color) => {
             const { error } = await supabase
@@ -60,8 +58,8 @@
                 .eq('id', MY_ID);
 
             if (error) {
-                alert("Ошибка! Проверьте RLS политики в Supabase.");
-                console.error(error);
+                console.error("Ошибка обновления:", error);
+                alert("Ошибка! Проверь RLS политики в Supabase.");
             } else {
                 fetchGroup();
             }
@@ -79,24 +77,16 @@
             list.innerHTML = data.map(user => `
                 <div class="user-item">
                     <div class="status-dot" style="background: ${user.color || '#ccc'}"></div>
-                    <div style="flex-grow: 1;">
-                        <strong>${user.username}</strong><br>
-                        <small>${user.status || 'Статус не задан'}</small>
+                    <div>
+                        <div style="font-weight: 700;">${user.username}</div>
+                        <div style="font-size: 13px; color: #65676b;">${user.status || 'Нет статуса'}</div>
                     </div>
                 </div>
             `).join('');
-
-            const me = data.find(u => u.id === MY_ID);
-            if (me) {
-                document.getElementById('myInfo').innerText = `Вы зашли как: ${me.username}`;
-            }
         }
 
-        // Запуск при загрузке
         fetchGroup();
-
-        // Обновление каждые 5 секунд (как в твоем скрине)
-        setInterval(fetchGroup, 5000);
+        setInterval(fetchGroup, 5000); // Обновление каждые 5 сек
     </script>
 </body>
 </html>
